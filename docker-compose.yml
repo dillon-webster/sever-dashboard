@@ -1,0 +1,9 @@
+services:
+  server-dashboard:
+    build: .
+    ports:
+      - "3030:3030"
+    volumes:
+      # gives the container read access to host RAM stats
+      - /proc/meminfo:/proc/meminfo:ro
+    restart: unless-stopped
