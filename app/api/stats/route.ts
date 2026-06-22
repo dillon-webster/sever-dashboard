@@ -13,11 +13,16 @@ interface CpuStats {
   cpuPercent: number;
 }
 
+interface DiskInfo {
+  totalGb: number;
+  usedGb: number;
+  freeGb: number;
+  usedPercent: number;
+}
+
 interface DiskStats {
-  diskTotalGb: number;
-  diskUsedGb: number;
-  diskFreeGb: number;
-  diskUsedPercent: number;
+  disk: DiskInfo;
+  mediaDisk: DiskInfo | null;
 }
 
 function getLinuxMemStats(): MemStats {
@@ -101,20 +106,29 @@ async function getMacCpuStats(): Promise<CpuStats> {
   return { cpuPercent: Math.round(parseFloat(match[1]) + parseFloat(match[2])) };
 }
 
-function getDiskStats(): DiskStats {
-  const out = execSync("df -k /").toString();
-  const lines = out.trim().split("\n");
-  const parts = lines[1].split(/\s+/);
-  const totalKb = parseInt(parts[1], 10);
-  const freeKb = parseInt(parts[3], 10);
-  const usedKb = totalKb - freeKb;
-  const toGb = (kb: number) => parseFloat((kb / 1024 / 1024).toFixed(1));
+function parseDfMount(mount: string): DiskInfo | null {
+  try {
+    const out = execSync(`df -k ${mount}`).toString();
+    const parts = out.trim().split("\n")[1].split(/\s+/);
+    const totalKb = parseInt(parts[1], 10);
+    const freeKb = parseInt(parts[3], 10);
+    const usedKb = totalKb - freeKb;
+    const toGb = (kb: number) => parseFloat((kb / 1024 / 1024).toFixed(1));
+    return {
+      totalGb: toGb(totalKb),
+      usedGb: toGb(usedKb),
+      freeGb: toGb(freeKb),
+      usedPercent: Math.round((usedKb / totalKb) * 100),
+    };
+  } catch {
+    return null;
+  }
+}
 
+function getDiskStats(): DiskStats {
   return {
-    diskTotalGb: toGb(totalKb),
-    diskUsedGb: toGb(usedKb),
-    diskFreeGb: toGb(freeKb),
-    diskUsedPercent: Math.round((usedKb / totalKb) * 100),
+    disk: parseDfMount("/")!,
+    mediaDisk: parseDfMount("/mnt/media"),
   };
 }
 
@@ -132,7 +146,8 @@ export async function GET() {
       platform: process.platform,
       ...mem,
       ...cpu,
-      ...disk,
+      disk: disk.disk,
+      mediaDisk: disk.mediaDisk,
     });
   } catch (err) {
     return Response.json({ ok: false, error: String(err) }, { status: 500 });

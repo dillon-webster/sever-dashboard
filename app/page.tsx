@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 
+interface DiskInfo {
+  totalGb: number;
+  usedGb: number;
+  freeGb: number;
+  usedPercent: number;
+}
+
 interface Stats {
   ok: boolean;
   totalMb: number;
@@ -10,10 +17,8 @@ interface Stats {
   availableMb: number;
   usedPercent: number;
   cpuPercent: number;
-  diskTotalGb: number;
-  diskUsedGb: number;
-  diskFreeGb: number;
-  diskUsedPercent: number;
+  disk: DiskInfo;
+  mediaDisk: DiskInfo | null;
   platform: string;
   error?: string;
 }
@@ -23,6 +28,11 @@ const REFRESH_INTERVAL_MS = 3000;
 function formatMb(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
   return `${mb} MB`;
+}
+
+function formatGb(gb: number): string {
+  if (gb >= 1024) return `${(gb / 1024).toFixed(1)} TB`;
+  return `${gb} GB`;
 }
 
 function BarMeter({ percent }: { percent: number }) {
@@ -140,18 +150,28 @@ export default function Dashboard() {
             />
           </div>
 
-          <MetricBlock
-            label="Disk"
-            percent={stats.diskUsedPercent}
-            primary={`${stats.diskUsedGb} GB / ${stats.diskTotalGb} GB`}
-            secondary={`${stats.diskFreeGb} GB free`}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MetricBlock
+              label="Disk (root)"
+              percent={stats.disk.usedPercent}
+              primary={`${formatGb(stats.disk.usedGb)} / ${formatGb(stats.disk.totalGb)}`}
+              secondary={`${formatGb(stats.disk.freeGb)} free`}
+            />
+            {stats.mediaDisk && (
+              <MetricBlock
+                label="Disk (media)"
+                percent={stats.mediaDisk.usedPercent}
+                primary={`${formatGb(stats.mediaDisk.usedGb)} / ${formatGb(stats.mediaDisk.totalGb)}`}
+                secondary={`${formatGb(stats.mediaDisk.freeGb)} free`}
+              />
+            )}
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard label="Total RAM" value={formatMb(stats.totalMb)} />
             <StatCard label="RAM Used" value={formatMb(stats.usedMb)} />
-            <StatCard label="Disk Total" value={`${stats.diskTotalGb} GB`} />
-            <StatCard label="Disk Free" value={`${stats.diskFreeGb} GB`} />
+            <StatCard label="Root Disk" value={formatGb(stats.disk.totalGb)} />
+            <StatCard label="Media Disk" value={stats.mediaDisk ? formatGb(stats.mediaDisk.totalGb) : "—"} />
           </div>
         </>
       )}
