@@ -9,6 +9,11 @@ interface Stats {
   freeMb: number;
   availableMb: number;
   usedPercent: number;
+  cpuPercent: number;
+  diskTotalGb: number;
+  diskUsedGb: number;
+  diskFreeGb: number;
+  diskUsedPercent: number;
   platform: string;
   error?: string;
 }
@@ -22,14 +27,9 @@ function formatMb(mb: number): string {
 
 function BarMeter({ percent }: { percent: number }) {
   const color =
-    percent >= 90
-      ? "bg-red-500"
-      : percent >= 70
-      ? "bg-yellow-400"
-      : "bg-emerald-400";
-
+    percent >= 90 ? "bg-red-500" : percent >= 70 ? "bg-yellow-400" : "bg-emerald-400";
   return (
-    <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden">
+    <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
       <div
         className={`h-full rounded-full transition-all duration-700 ${color}`}
         style={{ width: `${percent}%` }}
@@ -38,20 +38,39 @@ function BarMeter({ percent }: { percent: number }) {
   );
 }
 
-function StatCard({
+function MetricBlock({
   label,
-  value,
-  sub,
+  percent,
+  primary,
+  secondary,
 }: {
   label: string;
-  value: string;
-  sub?: string;
+  percent: number;
+  primary: string;
+  secondary: string;
 }) {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-1">
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-sm text-white/50 uppercase tracking-widest">{label}</p>
+          <p className="text-5xl font-bold mt-1">{percent}%</p>
+        </div>
+        <div className="text-right">
+          <p className="text-white/60 text-sm">{primary}</p>
+          <p className="text-white/30 text-xs mt-1">{secondary}</p>
+        </div>
+      </div>
+      <BarMeter percent={percent} />
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-1">
       <p className="text-sm text-white/50 uppercase tracking-widest">{label}</p>
-      <p className="text-3xl font-bold text-white">{value}</p>
-      {sub && <p className="text-sm text-white/40">{sub}</p>}
+      <p className="text-2xl font-bold text-white">{value}</p>
     </div>
   );
 }
@@ -106,29 +125,33 @@ export default function Dashboard() {
 
       {stats && (
         <>
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-sm text-white/50 uppercase tracking-widest">
-                  RAM Usage
-                </p>
-                <p className="text-5xl font-bold mt-1">{stats.usedPercent}%</p>
-              </div>
-              <p className="text-white/40 text-sm">
-                {formatMb(stats.usedMb)} / {formatMb(stats.totalMb)}
-              </p>
-            </div>
-            <BarMeter percent={stats.usedPercent} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MetricBlock
+              label="RAM"
+              percent={stats.usedPercent}
+              primary={`${formatMb(stats.usedMb)} / ${formatMb(stats.totalMb)}`}
+              secondary={`${formatMb(stats.availableMb)} available`}
+            />
+            <MetricBlock
+              label="CPU"
+              percent={stats.cpuPercent}
+              primary={`${stats.cpuPercent}% used`}
+              secondary="across all cores"
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <MetricBlock
+            label="Disk"
+            percent={stats.diskUsedPercent}
+            primary={`${stats.diskUsedGb} GB / ${stats.diskTotalGb} GB`}
+            secondary={`${stats.diskFreeGb} GB free`}
+          />
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard label="Total RAM" value={formatMb(stats.totalMb)} />
-            <StatCard label="Used" value={formatMb(stats.usedMb)} />
-            <StatCard
-              label="Available"
-              value={formatMb(stats.availableMb)}
-              sub="free + reclaimable"
-            />
+            <StatCard label="RAM Used" value={formatMb(stats.usedMb)} />
+            <StatCard label="Disk Total" value={`${stats.diskTotalGb} GB`} />
+            <StatCard label="Disk Free" value={`${stats.diskFreeGb} GB`} />
           </div>
         </>
       )}
