@@ -4,6 +4,7 @@ services:
     ports:
       - "3030:3030"
     volumes:
-      # gives the container read access to host RAM stats
       - /proc/meminfo:/proc/meminfo:ro
+      - /proc/stat:/proc/stat:ro
+      - /mnt/media:/mnt/media:ro
     restart: unless-stopped
